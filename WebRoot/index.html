@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+	<head lang="en">
+		<meta charset="UTF-8">
+		<title>WebRTC点对点视频通话系统</title>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport"
+			content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+		<meta name="format-detection" content="telephone=no">
+		<meta name="renderer" content="webkit">
+		<meta http-equiv="Cache-Control" content="no-siteapp" />
+		<link rel="alternate icon" type="image/png"
+			href="assets/i/favicon.png">
+		<link rel="stylesheet" href="assets/css/amazeui.min.css" />
+		<link rel="stylesheet" href="assets/css/app.css" />
+	</head>
+	<body>
+		<!--[if lte IE 9 ]><div class="am-alert am-alert-danger ie-warning" data-am-alert>
+  <button type="button" class="am-close">&times;</button>
+  <div class="am-container">
+  	  温馨提醒：你的浏览器太古董了，无法使用此功能，<a
+    href="http://browsehappy.com/" target="_blank">还不速速换一个</a>！</div></div><![endif]-->
+
+		<header class="am-topbar">
+
+		<h1 class="am-topbar-brand">
+			<a> WebRTC点对点视频通话系统 </a>
+		</h1>
+		</header>
+
+		<div class="am-g am-g-fixed webrtc-g-fixed">
+
+
+			<div class="col-md-8 webrtc-sidebar">
+				<div class="am-panel-group">
+					<section class="am-panel am-panel-default">
+					<div class="am-panel-hd">
+						文字交流
+					</div>
+					<div class="am-panel-bd chat-detail" id="show-chat">
+					</div>
+					</section>
+					<section class="am-panel am-panel-default">
+					<div class="am-panel-hd">
+						输入
+					</div>
+
+					<form class="am-form">
+						<div class="am-form-group">
+							<textarea class="" rows="5" id="content"></textarea>
+							<br>
+							<button type="button" class="am-btn am-btn-primary am-btn-block"
+								id="send">
+								发送
+							</button>
+						</div>
+					</form>
+					</section>
+
+				</div>
+			</div>
+
+
+
+			<div class="col-md-4">
+				<div class="am-panel-group">
+					<section class="am-panel am-panel-default">
+					<div class="am-panel-hd">
+						在线用户
+					</div>
+					<ul class="am-list webrtc-list" id="user-list">
+					</ul>
+					</section>
+				</div>
+			</div>
+		</div>
+
+
+
+
+		<div class="am-modal am-modal-prompt" tabindex="-1" id="my-tip">
+
+			<div class="am-popup-hd">
+				<h4 class="am-popup-title">
+					提示
+				</h4>
+				<span data-am-modal-close class="am-close">&times;</span>
+			</div>
+
+			<div class="am-modal-dialog">
+				<div class="am-modal-hd">
+					提示
+				</div>
+				<div class="am-modal-bd" id="tip-content">
+				</div>
+			</div>
+		</div>
+
+
+		<div class="am-modal am-modal-prompt" tabindex="-1" id="my-prompt">
+			<div class="am-modal-dialog">
+				<div class="am-modal-bd">
+					<p id="prompt-tips">
+						请输入一个用户名称
+					</p>
+					<input type="text" class="am-modal-prompt-input">
+				</div>
+				<div class="am-modal-footer">
+					<span class="am-modal-btn" data-am-modal-confirm>提交</span>
+				</div>
+			</div>
+		</div>
+
+
+		<div class="am-modal am-modal-prompt" tabindex="-1" id="my-connect">
+			<div class="am-modal-dialog">
+				<div class="am-modal-bd">
+					<p id="connect-name"></p>
+				</div>
+				<div class="am-modal-footer">
+					<span class="am-modal-btn" data-am-modal-cancel>取消通话</span>
+					<span class="am-modal-btn" data-am-modal-confirm>确认通话</span>
+				</div>
+			</div>
+		</div>
+		</div>
+
+
+		<footer class="webrtc-footer">
+		<p>
+			WebRTC点对点视频通话系统
+			<br />
+			<small>© Copyright 2014. by GraceUp.</small>
+		</p>
+		</footer>
+
+		<script src="assets/js/zepto.min.js">
+</script>
+		<script src="assets/js/amazeui.min.js">
+</script>
+		<script src="js/config.js">
+</script>
+		<script src="assets/js/app.js">
+</script>
+	</body>
+</html>

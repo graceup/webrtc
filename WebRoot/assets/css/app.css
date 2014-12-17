@@ -1,0 +1,15 @@
+@media only screen and (min-width: 1200px) {
+	.webrtc-g-fixed {
+		max-width: 1200px;
+	}
+}
+
+.webrtc-footer {
+	padding: 10px 0;
+	text-align: center;
+}
+
+.chat-detail{
+	height:250px;
+	overflow: auto;
+}

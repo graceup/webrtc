@@ -1,0 +1,117 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>WebRTC点对点视频通话系统</title>
+		<link rel="canonical" href="." />
+		<meta http-equiv="X-UA-Compatible" content="chrome=1" />
+		<meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+		<meta name="viewport"
+			content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="alternate icon" type="image/png"
+			href="assets/i/favicon.png">
+		<link rel="stylesheet" href="assets/css/amazeui.min.css" />
+		<link rel="stylesheet" href="assets/css/app.css" />
+		<!-- css 比较少，直接写到页面里了。若需要，可以放到一个单独文件里-->
+		<style type="text/css">
+html,body {
+	background-color: #000000;
+	height: 100%;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+}
+
+body {
+	margin: 0;
+	padding: 0;
+}
+
+#container {
+	background-color: #000000;
+	position: relative;
+	min-height: 100%;
+	width: 100%;
+	margin: 0px auto;
+	-webkit-perspective: 1000;
+}
+
+#card {
+	-webkit-transition-property: rotation;
+	-webkit-transition-duration: 2s;
+	-webkit-transform-style: preserve-3d;
+}
+
+#remote {
+	position: absolute;
+	width: 100%;
+	-webkit-backface-visibility: hidden;
+}
+
+#mini {
+	position: absolute;
+	height: 30%;
+	width: 30%;
+	bottom: 32px;
+	left: 4px;
+	opacity: 1.0;
+}
+
+#remoteVideo {
+	opacity: 0;
+	-webkit-transition-property: opacity;
+	-webkit-transition-duration: 2s;
+}
+
+#miniVideo {
+	opacity: 0;
+	-webkit-transition-property: opacity;
+	-webkit-transition-duration: 2s;
+}
+</style>
+	</head>
+	<body onresize="bodyOnResize()">
+		<!--[if lte IE 9 ]><div class="am-alert am-alert-danger ie-warning" data-am-alert>
+  <button type="button" class="am-close">&times;</button>
+  <div class="am-container">
+  	  温馨提醒：你的浏览器太古董了，无法使用此功能，<a
+    href="http://browsehappy.com/" target="_blank">还不速速换一个</a>！</div></div><![endif]-->
+
+
+		<div id="container" ondblclick="enterFullScreen()">
+			<div id="card">
+
+				<div id="remote">
+					<video width="100%" height="100%" id="remoteVideo"
+						autoplay="autoplay">
+					</video>
+					<div id="mini">
+						<video width="100%" height="100%" id="miniVideo"
+							autoplay="autoplay" />
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- 加载框 -->
+		<div class="am-modal am-modal-loading am-modal-no-btn" tabindex="-1"
+			id="my-modal-loading">
+			<div class="am-modal-dialog">
+				<div class="am-modal-hd" id="tips-content">
+					正在访问摄像头和麦克风，请允许...
+				</div>
+				<div class="am-modal-bd">
+					<span class="am-icon-spinner am-icon-spin"></span>
+				</div>
+			</div>
+		</div>
+
+		<script src="assets/js/zepto.min.js">
+</script>
+		<script src="assets/js/amazeui.min.js">
+</script>
+		<script src="js/config.js">
+</script>
+		<script src="js/webrtc.js">
+</script>
+	</body>
+</html>
