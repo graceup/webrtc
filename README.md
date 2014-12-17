@@ -21,3 +21,6 @@ java.lang.NoSuchMethodException: org.apache.catalina.deploy.WebXml addServlet
 
 java.lang.NoSuchMethodError: org.apache.catalina.connector.RequestFacade.doUpgrade(Lorg/apache/coyote/http11/upgrade/UpgradeInbound;)V
           解决方法：找到Tomcat安装文件夹中的lib文件夹，删除其中名为“catalina.jar”和“tomcat-coyote.jar”两个jar文件，将本工程中WebRoot——>WEB-INF——>lib文件夹中名为“catalina.jar”和“tomcat-coyote.jar”两个jar文件拷贝到Tomcat安装文件夹内的lib文件夹里。
+
+
+<img src="https://github.com/graceup/webrtc/blob/master/WebRoot/assets/i/favicon.png"></img>
