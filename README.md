@@ -25,15 +25,23 @@ java.lang.NoSuchMethodError: org.apache.catalina.connector.RequestFacade.doUpgra
 
 <img src="https://github.com/graceup/webrtc/blob/master/WebRoot/assets/i/favicon.png"></img>
 <span style="margin-left:50px;">-------------------------------------------------------2014-12-17<span>
-
+pc端，初次进入输入用户名称：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/1.jpg"></img><br>
+pc端，已进入页面：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/2.jpg"></img><br>
+pc端，通话请求提示：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/3.jpg"></img><br>
+pc端，进入视频通话提示：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/4.jpg"></img><br>
+pc端，视频通话连接中：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/5.jpg"></img><br>
+pc端，进入视频通话页面（因为没有摄像头，所以显示只是一幅图像）：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/6.jpg"></img><br>
+手机端，初次进入输入用户名称：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/7.png"></img><br>
+手机端，已进入页面：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/8.png"></img><br>
+手机端，文字聊天页面：<br>
 <img src="https://github.com/graceup/webrtc/blob/master/pic/9.png"></img><br>
 <br>
 <span style="margin-left:50px;">-------------------------------------------------------2014-12-18<span>
