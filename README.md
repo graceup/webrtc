@@ -54,4 +54,9 @@ pc端，进入视频通话页面（因为没有摄像头，所以显示只是一
 -----------------------------------
 <img src="https://github.com/graceup/webrtc/blob/master/pic/9.png"></img><br>
 <br>
+手机端(支持WebRTC的浏览器)，进入视频通话页面：<br>
+-----------------------------------
+<img src="https://github.com/graceup/webrtc/blob/master/pic/10.png"></img><br>
+<br>
+
 <span style="margin-left:50px;">-------------------------------------------------------2014-12-18<span>
