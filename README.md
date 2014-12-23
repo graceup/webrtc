@@ -3,7 +3,7 @@
  <strong>主要功能：<strong><br>
  1、基于websocket的在线用户列表；<br>
  2、用websocket作为信令通道，构建WebRTC视频通话。<br>
-<span style="margin-left:50px;">-------------------------------------------------------2014-12-02<span>
+<span style="margin-left:50px;">          -------------------------------------------------------2014-12-02<span>
 
 开发IDE：MyEclipse 8.6
 工程编码方式：UTF-8
@@ -59,4 +59,7 @@ pc端，进入视频通话页面（因为没有摄像头，所以显示只是一
 <img src="https://github.com/graceup/webrtc/blob/master/pic/10.png"></img><br>
 <br>
 
-<span style="margin-left:50px;">-------------------------------------------------------2014-12-18<span>
+<span style="margin-left:50px;">          -------------------------------------------------------2014-12-18<span>
+
+页面使用的前端框架是Amaze UI（http://amazeui.org），所以兼容支持WebRTC的移动端。
+<span style="margin-left:50px;">          -------------------------------------------------------2014-12-23<span>
