@@ -70,6 +70,7 @@ var peerConnection = null;
 var remoteDescriptionSet = false;
 var pendingIceCandidates = [];
 var roomBusy = false;
+var mediaReady = false;
 
 // stun和turn服务器，如果搭建了自己的stun和turn服务器，请修改此处。
 var iceServer = {
@@ -103,10 +104,12 @@ socket.onmessage = function(event) {
 
 socket.onclose = function() {
 	if (roomBusy) {
+		stopLocalMedia();
 		return;
 	}
 	showTip("信令连接已断开");
 	closePeerConnection();
+	stopLocalMedia();
 };
 
 socket.onerror = function(error) {
@@ -115,9 +118,11 @@ socket.onerror = function(error) {
 };
 
 window.onbeforeunload = function() {
+	sendHangup();
 	sendSignal({
 		"event": "_leave"
 	});
+	stopLocalMedia();
 };
 
 async function startLocalMedia() {
@@ -137,11 +142,13 @@ async function startLocalMedia() {
 		miniVideo.muted = true;
 
 		createPeerConnection();
+		mediaReady = true;
 		showTip("正在等待连接，请等待...");
 	} catch (error) {
 		var msgTip = "获取不到媒体流，请确认麦克风或者视频设备";
 		alert(msgTip);
 		showTip(msgTip);
+		mediaReady = false;
 		console.log("getUserMedia error: " + error);
 	}
 }
@@ -170,9 +177,10 @@ function createPeerConnection() {
 	};
 
 	peerConnection.onconnectionstatechange = function() {
-		if (peerConnection.connectionState === "disconnected"
-				|| peerConnection.connectionState === "failed"
-				|| peerConnection.connectionState === "closed") {
+		var connection = this;
+		if (connection.connectionState === "disconnected"
+				|| connection.connectionState === "failed"
+				|| connection.connectionState === "closed") {
 			showTip("通话已断开");
 		}
 	};
@@ -196,6 +204,9 @@ async function handleSignal(message) {
 			showTip("正在等待连接，请等待...");
 		} else if (message.event === "_ready") {
 			await waitForPeerConnection();
+			if (!mediaReady) {
+				return;
+			}
 			if (message.initiator) {
 				await createAndSendOffer();
 			}
@@ -213,6 +224,7 @@ async function handleSignal(message) {
 			roomBusy = true;
 			showTip("房间人数已满，请稍后再试");
 			closePeerConnection();
+			stopLocalMedia();
 		}
 	} catch (error) {
 		console.log("handle signal error: " + error);
@@ -291,7 +303,9 @@ async function flushPendingIceCandidates() {
 function handleRemoteLeave() {
 	showTip("对方已离开，正在等待重新连接...");
 	closePeerConnection();
-	createPeerConnection();
+	if (localStream) {
+		createPeerConnection();
+	}
 }
 
 function closePeerConnection() {
@@ -304,6 +318,23 @@ function closePeerConnection() {
 	document.getElementById("remoteVideo").srcObject = null;
 }
 
+function stopLocalMedia() {
+	if (localStream) {
+		localStream.getTracks().forEach(function(track) {
+			track.stop();
+		});
+		localStream = null;
+	}
+	mediaReady = false;
+	document.getElementById("miniVideo").srcObject = null;
+}
+
+function sendHangup() {
+	sendSignal({
+		"event": "_hangup"
+	});
+}
+
 function sendSignal(message) {
 	if (socket.readyState !== WebSocket.OPEN) {
 		return;
@@ -314,23 +345,30 @@ function sendSignal(message) {
 }
 
 function waitForPeerConnection() {
-	return new Promise(function(resolve) {
+	return new Promise(function(resolve, reject) {
 		if (peerConnection) {
 			resolve(peerConnection);
 			return;
 		}
 
+		var waited = 0;
 		var timer = setInterval(function() {
 			if (peerConnection) {
 				clearInterval(timer);
 				resolve(peerConnection);
+				return;
+			}
+			waited += 50;
+			if (waited >= 5000) {
+				clearInterval(timer);
+				reject(new Error("wait peer connection timeout"));
 			}
 		}, 50);
 	});
 }
 
 function showTip(message) {
-	$("#tips-content").html(message);
+	$("#tips-content").text(message);
 }
 
 /**

@@ -1,11 +1,12 @@
 package com.graceup.webrtc;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLDecoder;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.websocket.OnClose;
 import javax.websocket.OnError;
@@ -14,236 +15,235 @@ import javax.websocket.OnOpen;
 import javax.websocket.Session;
 import javax.websocket.server.ServerEndpoint;
 
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
 
 /**
- * 
- * 处理用户对话 websocket
- *
+ * 处理用户对话 WebSocket。
  */
 @ServerEndpoint("/onlineUserControl")
 public class OnlineUserControlWebSocket {
 
-	
-	/**
-	 * 保存连接的Map容器 用来存放每个客户端对应的WebSocket对象。使用Map来存放，其中Key可以为用户标识
-	 */
-	private static final Map<String, Session> connections = new HashMap<String, Session>();
+	private static final Gson GSON = new Gson();
 
 	/**
-	 * key为用户名称，value为对应连接对象的id
+	 * key 为 sessionId，value 为对应连接对象。
 	 */
-	private static final Map<String, String> users = new HashMap<String, String>();
+	private static final Map<String, Session> connections =
+			new ConcurrentHashMap<String, Session>();
 
 	/**
-	 * 连接建立成功调用的方法
-	 * 
+	 * key 为用户名称，value 为对应连接对象的 sessionId。
+	 */
+	private static final Map<String, String> users =
+			new ConcurrentHashMap<String, String>();
+
+	/**
+	 * key 为 sessionId，value 为用户名称。
+	 */
+	private static final Map<String, String> sessionUsers =
+			new ConcurrentHashMap<String, String>();
+
+	/**
+	 * 连接建立成功调用的方法。
+	 *
 	 * @param session
-	 *            可选的参数。session为与某个客户端的连接会话，需要通过它来给客户端发送数据
-	 * @throws IOException
+	 *            与某个客户端的连接会话
 	 */
 	@OnOpen
 	public void onOpen(Session session) throws IOException {
-		
-		// 获取用户名，解决乱码问题
-		String user = session.getRequestURI().toString();
-		try {
-			user = URLDecoder.decode(user, "utf-8").split("=")[1];
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+		String user = getQueryParameter(session, "user");
+		if (isBlank(user)) {
+			sendMessageToUser(session, toJson("type", "invalid_user"));
+			session.close();
+			return;
 		}
 
-		Set<String> onlineUsers = getOnlineUser();
-		/**
-		 * 用户名已存在
-		 */
-		if (onlineUsers.contains(user)) {
-			System.out.println("用户名:" + user + ",已存在");
-			JSONObject result = new JSONObject();
-			result.put("type", "user_is_contain");
-			sendMessageToUser(session, result.toString());// 向当前连接发送当前在线用户的列表
-		}else {
-
-			JSONObject result = new JSONObject();
-	
-			// 触发连接事件，在连接池中添加连接
-			result.put("type", "user_join");
-			result.put("user", user);
-			sendMessageToAllUser(result.toString());// 向所有在线用户推送当前用户上线的消息
-	
-			String sessionId=session.getId();
-			// 向连接池添加当前的连接对象
-			connections.put(sessionId, session);
-			users.put(user, sessionId);
-			
-			onlineUsers = getOnlineUser();
-			
-			result = new JSONObject();
-			result.put("type", "get_online_user");
-			result.put("list", onlineUsers);
-	
-			sendMessageToUser(session, result.toString());// 向当前连接发送当前在线用户的列表
-	
-		
+		String sessionId = session.getId();
+		String oldSessionId = users.putIfAbsent(user, sessionId);
+		if (oldSessionId != null) {
+			sendMessageToUser(session, toJson("type", "user_is_contain"));
+			session.close();
+			return;
 		}
-		
 
+		connections.put(sessionId, session);
+		sessionUsers.put(sessionId, user);
+
+		Map<String, Object> joinMessage = new LinkedHashMap<String, Object>();
+		joinMessage.put("type", "user_join");
+		joinMessage.put("user", user);
+		sendMessageToAllUser(GSON.toJson(joinMessage), session);
+
+		Map<String, Object> onlineMessage = new LinkedHashMap<String, Object>();
+		onlineMessage.put("type", "get_online_user");
+		onlineMessage.put("list", getOnlineUsers());
+		sendMessageToUser(session, GSON.toJson(onlineMessage));
 	}
 
 	/**
-	 * 连接关闭调用的方法
+	 * 连接关闭调用的方法。
 	 */
 	@OnClose
 	public void onClose(Session session) {
-		
-		
-		String sessionId=session.getId();
-		
-		if(connections.get(sessionId)!=null){
-			// 获取用户名，解决乱码问题
-			String user = session.getRequestURI().toString();
-			try {
-				user = URLDecoder.decode(user, "utf-8").split("=")[1];
-			} catch (UnsupportedEncodingException e) {
-				e.printStackTrace();
-			}
-	
-			
-			// 触发关闭事件，在连接池中移除连接
-			connections.remove(sessionId);
-			users.remove(user);
-	
-			JSONObject result = new JSONObject();
-			result.put("type", "user_leave");
-			result.put("user", user);
-			sendMessageToAllUser(result.toString());// 向在线用户发送当前用户退出的消息
-		}
+		removeSession(session);
 	}
 
 	/**
-	 * 收到客户端消息后调用的方法
-	 * 
+	 * 收到客户端消息后调用的方法。
+	 *
 	 * @param message
 	 *            客户端发送过来的消息
 	 * @param session
-	 *            可选的参数
+	 *            与某个客户端的连接会话
 	 */
 	@OnMessage
 	public void onMessage(String message, Session session) {
-		
-
-		// 获取用户名，解决乱码问题
-		String user = session.getRequestURI().toString();
-		try {
-			user = URLDecoder.decode(user, "utf-8").split("=")[1];
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
+		String user = sessionUsers.get(session.getId());
+		if (user == null) {
+			return;
 		}
 
-		System.out.println("来自客户端的消息:" + message);
-		
-		JSONObject jsonObj = JSONObject.parseObject(message);
-		String type = jsonObj.getString("type");
+		JsonObject jsonObj;
+		try {
+			JsonElement element = new JsonParser().parse(message);
+			if (!element.isJsonObject()) {
+				sendMessageToUser(session, toJson("type", "invalid_message"));
+				return;
+			}
+			jsonObj = element.getAsJsonObject();
+		} catch (JsonSyntaxException e) {
+			sendMessageToUser(session, toJson("type", "invalid_message"));
+			return;
+		}
+
+		String type = getString(jsonObj, "type");
 		if ("message".equals(type)) {
-			JSONObject result = new JSONObject();
+			Map<String, Object> result = new LinkedHashMap<String, Object>();
 			result.put("user", user);
 			result.put("type", "message");
-			result.put("msg", jsonObj.getString("contentVal"));
-			String resultStr = result.toString();
-
-			sendMessageToAllUser(resultStr);// 向所有在线用户发送消息
-		}
-
-		if ("connect".equals(type)) {
-			String roomId = jsonObj.getString("roomId");
-			String userName = jsonObj.getString("userName");
-			JSONObject result = new JSONObject();
-			result.put("userName", userName);
-			result.put("fromUser", jsonObj.getString("fromUser"));
-			result.put("roomId", roomId);
+			result.put("msg", getString(jsonObj, "contentVal"));
+			sendMessageToAllUser(GSON.toJson(result), null);
+		} else if ("connect".equals(type)) {
+			String targetUser = getString(jsonObj, "userName");
+			Map<String, Object> result = new LinkedHashMap<String, Object>();
+			result.put("userName", targetUser);
+			result.put("fromUser", user);
+			result.put("roomId", getString(jsonObj, "roomId"));
 			result.put("type", "connect");
-			String resultStr = result.toString();
-			
-			sendMessageToUser(userName, resultStr);
-
+			sendMessageToUser(targetUser, GSON.toJson(result));
 		}
-
 	}
 
 	/**
-	 * 发生错误时调用
-	 * 
+	 * 发生错误时调用。
+	 *
 	 * @param session
+	 *            与某个客户端的连接会话
 	 * @param error
+	 *            错误信息
 	 */
 	@OnError
 	public void onError(Session session, Throwable error) {
-		System.out.println("关闭了");
+		removeSession(session);
 	}
-	
-	
 
-	/**
-	 * 获取所有的在线用户
-	 *
-	 * 
-	 */
-	private static Set<String> getOnlineUser() {
-		return users.keySet();
+	private static List<String> getOnlineUsers() {
+		List<String> onlineUsers = new ArrayList<String>(users.keySet());
+		Collections.sort(onlineUsers);
+		return onlineUsers;
 	}
-	
 
+	private static void removeSession(Session session) {
+		String sessionId = session.getId();
+		String user = sessionUsers.remove(sessionId);
+		connections.remove(sessionId);
+		if (user == null) {
+			return;
+		}
 
-	/**
-	 * 向特定的用户发送数据
-	 *
-	 * 
-	 */
+		users.remove(user, sessionId);
+
+		Map<String, Object> result = new LinkedHashMap<String, Object>();
+		result.put("type", "user_leave");
+		result.put("user", user);
+		sendMessageToAllUser(GSON.toJson(result), session);
+	}
+
 	private static void sendMessageToUser(String user, String message) {
-		try {
-			String id=users.get(user);
-			if(id!=null) {
-				Session session = connections.get(id);
-				if (session != null) {
-					session.getBasicRemote().sendText(message);
-				}
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
+		String id = users.get(user);
+		if (id == null) {
+			return;
+		}
+
+		Session session = connections.get(id);
+		if (!sendMessageToUser(session, message)) {
+			cleanupClosedSession(id, session);
 		}
 	}
 
-	/**
-	 * 向特定的用户发送数据
-	 *
-	 * 
-	 */
-	private static void sendMessageToUser(Session session, String message) {
+	private static boolean sendMessageToUser(Session session, String message) {
+		if (session == null || !session.isOpen()) {
+			return false;
+		}
+
 		try {
-			if (session != null) {
+			synchronized (session) {
 				session.getBasicRemote().sendText(message);
 			}
+			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
+			return false;
 		}
 	}
 
-	/**
-	 * 向所有的用户发送消息
-	 *
-	 */
-	private static void sendMessageToAllUser(String message) {
-		try {
-			Set<String> keySet = connections.keySet();
-			for (String key : keySet) {
-				Session session = connections.get(key);
-				if (session != null) {
-					session.getBasicRemote().sendText(message);
-				}
+	private static void sendMessageToAllUser(String message, Session sender) {
+		for (Map.Entry<String, Session> entry : connections.entrySet()) {
+			Session session = entry.getValue();
+			if (sender != null && sender.equals(session)) {
+				continue;
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
+			if (!sendMessageToUser(session, message)) {
+				cleanupClosedSession(entry.getKey(), session);
+			}
 		}
 	}
 
+	private static void cleanupClosedSession(String sessionId, Session session) {
+		connections.remove(sessionId, session);
+		String user = sessionUsers.remove(sessionId);
+		if (user != null) {
+			users.remove(user, sessionId);
+		}
+	}
+
+	private static String getQueryParameter(Session session, String name) {
+		List<String> values = session.getRequestParameterMap().get(name);
+		if (values == null || values.isEmpty()) {
+			return null;
+		}
+		return values.get(0);
+	}
+
+	private static boolean isBlank(String value) {
+		return value == null || value.trim().length() == 0;
+	}
+
+	private static String getString(JsonObject data, String key) {
+		JsonElement value = data.get(key);
+		if (value == null || value.isJsonNull()) {
+			return "";
+		}
+		return value.getAsString();
+	}
+
+	private static String toJson(String key, String value) {
+		Map<String, Object> result = new LinkedHashMap<String, Object>();
+		result.put(key, value);
+		return GSON.toJson(result);
+	}
 }

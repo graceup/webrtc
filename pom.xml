@@ -8,6 +8,9 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>webrtc Maven Webapp</name>
 	<url>http://maven.apache.org</url>
+	<properties>
+		<tomcat.port>8090</tomcat.port>
+	</properties>
 	<dependencies>
 
 		<dependency>
@@ -23,9 +26,9 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.alibaba</groupId>
-			<artifactId>fastjson</artifactId>
-			<version>2.0.43</version>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.8.5</version>
 		</dependency>
 
 		<dependency>
@@ -55,7 +58,7 @@
 				<artifactId>tomcat7-maven-plugin</artifactId>
 				<version>2.2</version>
 				<configuration>
-					<port>8090</port>
+					<port>${tomcat.port}</port>
 					<path>/webrtc</path>
 				</configuration>
 			</plugin>

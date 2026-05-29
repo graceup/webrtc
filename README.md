@@ -1,12 +1,14 @@
 # WebRTC 点对点视频通话系统
 
-基于 WebSocket 信令的 WebRTC 实时音视频通信系统。
+基于 WebSocket 信令的 WebRTC 实时音视频通信系统，支持在线用户、文字聊天和 1 对 1 点对点视频通话。
 
 ## 主要功能
 
 1. **在线用户列表** - 基于 WebSocket 的实时在线用户展示
 2. **视频通话** - 使用 WebSocket 作为信令通道，构建 WebRTC 点对点视频通话
 3. **文字聊天** - 支持文字消息实时通信
+4. **房间控制** - 视频通话房间限制为 2 人，第三人进入时返回忙碌提示
+5. **稳定信令** - 使用单个 `RTCPeerConnection`，支持 `_join`、`_ready`、`_leave`、`_hangup`、`_busy` 等状态信令
 
 ## 技术栈
 
@@ -17,7 +19,7 @@
 - **依赖库**:
   - `javax.websocket-api` 1.0 - WebSocket 规范 API
   - `javaee-api` 7.0 - Java EE 规范
-  - `fastjson` 2.0.43 - JSON 处理
+  - `gson` 2.8.5 - JSON 处理
 
 ## 快速开始
 
@@ -40,6 +42,12 @@ mvn tomcat7:run
 
 应用将运行在: http://localhost:8090/webrtc
 
+如果 8090 端口已被占用，可以指定临时端口：
+
+```bash
+mvn tomcat7:run -Dtomcat.port=18090
+```
+
 ### 访问应用
 
 - **首页**: http://localhost:8090/webrtc/
@@ -52,7 +60,6 @@ webrtc/
 ├── src/main/
 │   ├── java/com/graceup/webrtc/    # Java 源代码
 │   │   ├── OnlineUserControlWebSocket.java
-│   │   ├── WebSocket.java
 │   │   └── WebrtcWebSocket.java
 │   ├── resources/                  # 配置文件
 │   └── webapp/                     # Web 应用资源
@@ -68,23 +75,39 @@ webrtc/
 
 ## 配置说明
 
-部署时，需要根据实际情况修改 `src/main/webapp/js/config.js` 中的 WebSocket 连接地址：
+`src/main/webapp/js/config.js` 会根据当前页面地址自动生成 WebSocket 地址：
 
 ```javascript
-// 开发环境
-ws://localhost:8090/webrtc/
+var chatWebSocketUrl = wsProtocol + "://" + url + projectName + "/onlineUserControl";
+var webrtcWebSocketUrl = wsProtocol + "://" + url + projectName + "/websocket";
+```
 
-// 生产环境
-ws://服务器IP:端口/webrtc/
+部署到 HTTPS 时会自动使用 `wss://`，部署到 HTTP 时使用 `ws://`。
+
+WebRTC 信令地址格式为：
+
+```text
+ws://host:port/webrtc/websocket/{roomId}
 ```
 
 ## 使用说明
 
 ### 视频通话测试
 
-1. 在两个不同的浏览器标签页或不同设备上打开相同 roomId 的链接
+1. 在首页输入用户名进入在线用户列表
 2. 允许浏览器访问摄像头和麦克风
-3. 点击用户进行视频通话
+3. 点击在线用户旁边的“通话”按钮发起邀请
+4. 对方确认后，双方进入相同 roomId 的视频通话页面
+5. 同一 roomId 最多允许 2 人进入，后续用户会收到房间忙碌提示
+
+### 信令流程
+
+视频通话页面只维护一个 `RTCPeerConnection`：
+
+1. 第一个用户进入房间后等待
+2. 第二个用户进入房间后收到 `_ready` 并发起 offer
+3. 双方通过 `_offer`、`_answer`、`_ice_candidate` 完成连接
+4. 断开或关闭页面时通过 `_leave` / `_hangup` 通知对方
 
 ---
 
