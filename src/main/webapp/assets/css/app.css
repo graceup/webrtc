@@ -1,0 +1,23 @@
+@media only screen and (min-width: 1200px) {
+	.webrtc-g-fixed {
+		max-width: 1200px;
+	}
+}
+
+.webrtc-footer {
+	padding: 10px 0;
+	text-align: center;
+}
+
+.chat-detail{
+	height:250px;
+	overflow: auto;
+}
+
+body{
+	-moz-background-size:100% 100%; 
+	background-size:100% 100%; 
+	background: #43cea2; /* fallback for old browsers */
+background: -webkit-linear-gradient(to left, #c2e59c , #64b3f4); /* Chrome 10-25, Safari 5.1-6 */
+background: linear-gradient(to left, #c2e59c , #64b3f4); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
+}
