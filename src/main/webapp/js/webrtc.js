@@ -156,26 +156,46 @@ offerPeerConnection.onaddstream = function(event) {
 
 // 发送answer的函数，发送本地session描述
 var sendAnswerFn = function(desc) {
-	answerPeerConnection.setLocalDescription(desc);
-	socket.send(JSON.stringify( {
-		"userName" : userName,
-		"event" : "_answer",
-		"data" : {
-			"sdp" : desc
-		}
-	}));
+	var localDescription = answerPeerConnection.setLocalDescription(desc);
+	var sendAnswer = function() {
+		socket.send(JSON.stringify( {
+			"userName" : userName,
+			"event" : "_answer",
+			"data" : {
+				"sdp" : desc
+			}
+		}));
+	};
+
+	if (localDescription && localDescription.then) {
+		localDescription.then(sendAnswer).catch(function(error) {
+			console.log('setLocalDescription answer error: ' + error);
+		});
+	} else {
+		sendAnswer();
+	}
 };
 
 // 发送offer的函数，发送本地session描述
 var sendOfferFn = function(desc) {
-	offerPeerConnection.setLocalDescription(desc);
-	socket.send(JSON.stringify( {
-		"userName" : userName,
-		"event" : "_offer",
-		"data" : {
-			"sdp" : desc
-		}
-	}));
+	var localDescription = offerPeerConnection.setLocalDescription(desc);
+	var sendOffer = function() {
+		socket.send(JSON.stringify( {
+			"userName" : userName,
+			"event" : "_offer",
+			"data" : {
+				"sdp" : desc
+			}
+		}));
+	};
+
+	if (localDescription && localDescription.then) {
+		localDescription.then(sendOffer).catch(function(error) {
+			console.log('setLocalDescription offer error: ' + error);
+		});
+	} else {
+		sendOffer();
+	}
 };
 
 
@@ -237,20 +257,37 @@ socket.onmessage = function(event) {
 		console.log("open!");
 	} else {
 		if (json.userName != userName) {
-			answerPeerConnection
-					.setRemoteDescription(new RTCSessionDescription(
-							json.data.sdp));
-			offerPeerConnection.setRemoteDescription(new RTCSessionDescription(
-					json.data.sdp));
-			// 如果是一个offer，那么需要回复一个answer
 			if (json.event === "_offer") {
-				answerPeerConnection.createAnswer(sendAnswerFn,
-						function(error) {
-							console.log('Failure callback: ' + error);
-						});
+				if (answerPeerConnection.signalingState === "stable") {
+					answerPeerConnection
+							.setRemoteDescription(new RTCSessionDescription(
+									json.data.sdp))
+							.then(function() {
+								return answerPeerConnection.createAnswer();
+							})
+							.then(sendAnswerFn)
+							.catch(function(error) {
+								console.log('handle offer error: ' + error);
+							});
+				} else {
+					console.log('ignore offer in state: '
+							+ answerPeerConnection.signalingState);
+				}
+			} else if (json.event === "_answer") {
+				if (offerPeerConnection.signalingState === "have-local-offer") {
+					offerPeerConnection
+							.setRemoteDescription(new RTCSessionDescription(
+									json.data.sdp))
+							.catch(function(error) {
+								console.log('setRemoteDescription answer error: ' + error);
+							});
+				} else {
+					console.log('ignore answer in state: '
+							+ offerPeerConnection.signalingState);
+				}
 			}
 		}
-
+	
 	}
 };
 

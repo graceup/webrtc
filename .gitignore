@@ -134,3 +134,6 @@ yarn-error.log*
 # Tomcat
 work/
 logs/
+AGENTS.md
+.vscode/settings.json
+.vscode/launch.json
