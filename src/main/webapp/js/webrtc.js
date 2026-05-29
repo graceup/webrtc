@@ -1,7 +1,5 @@
-//webrtc 视频点对点主要js
+// webrtc 视频点对点主要js
 
-
-//显示加载框
 loading();
 
 /**
@@ -9,17 +7,15 @@ loading();
  */
 function bodyOnResize() {
 	var bodyHeight = document.body.clientHeight;
-	var containerHeiht = window.document.getElementById('container').offsetHeight;
 	document.getElementById("card").style.height = bodyHeight + "px";
 }
+
 /**
- *初始化
+ * 初始化
  */
 function initialize() {
-	
 	bodyOnResize();
 
-	var card = document.getElementById("card");
 	var miniVideo = document.getElementById("miniVideo");
 	var remoteVideo = document.getElementById("remoteVideo");
 
@@ -28,11 +24,12 @@ function initialize() {
 }
 
 setTimeout(initialize, 1);
+
 /**
  * 进入全屏
  */
 function enterFullScreen() {
-	var element = document.getElementById('container');
+	var element = document.getElementById("container");
 	if (element.requestFullScreen) {
 		element.requestFullScreen();
 	} else if (element.webkitRequestFullScreen) {
@@ -42,272 +39,317 @@ function enterFullScreen() {
 	}
 }
 
-
 /**
  * 获取url参数
+ *
  * @param {Object} name
- * @return {TypeName} 
+ * @return {TypeName}
  */
 function getQueryString(name) {
 	var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
-	var r = window.location.search.substr(1).match(reg);
-	if (r != null)
-		return unescape(r[2]);
+	var result = window.location.search.substr(1).match(reg);
+	if (result != null) {
+		return decodeURIComponent(result[2]);
+	}
 	return null;
 }
 
 /**
- *WebRTC兼容浏览器
- */
-var PeerConnection = (window.PeerConnection || window.webkitPeerConnection00
-		|| window.webkitRTCPeerConnection || window.mozRTCPeerConnection);
-var URL = (window.URL || window.webkitURL || window.msURL || window.oURL);
-var getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia
-		|| navigator.mozGetUserMedia || navigator.msGetUserMedia);
-var RTCIceCandidate = (window.mozRTCIceCandidate || window.RTCIceCandidate);
-var RTCSessionDescription = (window.mozRTCSessionDescription || window.RTCSessionDescription);
-
-navigator.getMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia
-		|| navigator.mozGetUserMedia || navigator.msGetUserMedia);
-
-/**
  * 生成随机串
- * @return {TypeName} 
+ *
+ * @return {TypeName}
  */
 function getToken() {
 	return Math.round(Math.random() * 9999999999) + 9999999999;
 }
-//用随机串作为用户名称
+
 var userName = getToken();
+var roomId = getQueryString("roomId");
+var localStream = null;
+var peerConnection = null;
+var remoteDescriptionSet = false;
+var pendingIceCandidates = [];
+var roomBusy = false;
 
-// 与信令服务器的WebSocket连接
-var socket = new WebSocket(webrtcWebSocketUrl + "?roomId="
-		+ getQueryString("roomId"));
-
-
-//stun和turn服务器，如果搭建了自己的stun和turn服务器，请修改此处。
+// stun和turn服务器，如果搭建了自己的stun和turn服务器，请修改此处。
 var iceServer = {
-	"iceServers" : [ 
-//        {"url" : "stun:turn.igustudio.com:3478" },
+	"iceServers": [
 		{
-		 "url" : "turn:turn.igustudio.com:3478",
-		 "username" : "helloword",
-		 "credential" : "helloword"
-		}, 
-//		{"url" : "stun:stun.voxgratia.org" },
- 		{"url" : "stun:39.108.210.140:3478" }
-//		{"url" : "stun:stun.ideasip.com" }
-//		{
-//		"url" : "turn:numb.viagenie.ca",
-//		"username" : "webrtc@live.com",
-//		"credential" : "muazkh"
-//		} 
-//		{
-//			"url" : "turn:111.200.54.118:3478",
-//			"username" : "user1",
-//			"credential" : "123456"
-//		} 
-		]
+			"urls": "turn:turn.igustudio.com:3478",
+			"username": "helloword",
+			"credential": "helloword"
+		},
+		{
+			"urls": "stun:39.108.210.140:3478"
+		}
+	]
 };
 
-
-// 创建PeerConnection实例 (参数为null则没有iceserver，即使没有stunserver和turnserver，仍可在局域网下通讯)
-var answerPeerConnection = new PeerConnection(iceServer);
-
-var offerPeerConnection = new PeerConnection(iceServer);
-
-// 发送ICE候选到其他客户端
-answerPeerConnection.onicecandidate = function(event) {
-	if (event.candidate !== null) {
-		socket.send(JSON.stringify( {
-			"userName" : userName,
-			"type" : "_ice_answer",
-			"event" : "_ice_candidate",
-			"data" : {
-				"candidate" : event.candidate
-			}
-		}));
-	}
-};
-
-offerPeerConnection.onicecandidate = function(event) {
-	if (event.candidate !== null) {
-		socket.send(JSON.stringify( {
-			"userName" : userName,
-			"type" : "_ice_offer",
-			"event" : "_ice_candidate",
-			"data" : {
-				"candidate" : event.candidate
-			}
-		}));
-	}
-};
-
-// 如果检测到媒体流连接到本地，将其绑定到一个video标签上输出
-answerPeerConnection.onaddstream = function(event) {
-	unLoading();
-	document.getElementById('remoteVideo').srcObject =event.stream;
-};
-
-offerPeerConnection.onaddstream = function(event) {
-	unLoading();
-	document.getElementById('remoteVideo').srcObject = (event.stream);
-};
-
-// 发送answer的函数，发送本地session描述
-var sendAnswerFn = function(desc) {
-	var localDescription = answerPeerConnection.setLocalDescription(desc);
-	var sendAnswer = function() {
-		socket.send(JSON.stringify( {
-			"userName" : userName,
-			"event" : "_answer",
-			"data" : {
-				"sdp" : desc
-			}
-		}));
-	};
-
-	if (localDescription && localDescription.then) {
-		localDescription.then(sendAnswer).catch(function(error) {
-			console.log('setLocalDescription answer error: ' + error);
-		});
-	} else {
-		sendAnswer();
-	}
-};
-
-// 发送offer的函数，发送本地session描述
-var sendOfferFn = function(desc) {
-	var localDescription = offerPeerConnection.setLocalDescription(desc);
-	var sendOffer = function() {
-		socket.send(JSON.stringify( {
-			"userName" : userName,
-			"event" : "_offer",
-			"data" : {
-				"sdp" : desc
-			}
-		}));
-	};
-
-	if (localDescription && localDescription.then) {
-		localDescription.then(sendOffer).catch(function(error) {
-			console.log('setLocalDescription offer error: ' + error);
-		});
-	} else {
-		sendOffer();
-	}
-};
-
-
-
-socket.onopen = function(event) {
-	console.log("websocket opened.");
-	
-	// 获取本地音频和视频流,可选择
-	navigator.getMedia( {
-		"audio" : true,
-		"video" : true 
-//		 video: { facingMode: "user" } //如果有前置摄像头的话使用前置摄像头
-	}, function(stream) {
-
-		//绑定本地媒体流到video标签用于输出
-			document.getElementById('miniVideo').srcObject =stream;
-
-			//静音处理
-			document.getElementById('miniVideo').muted = true;
-
-			//向PeerConnection中加入需要发送的流
-			answerPeerConnection.addStream(stream);
-			offerPeerConnection.addStream(stream);
-
-			$("#tips-content").html("正在等待连接，请等待...");
-
-			//发送一个offer信令,如果有回应，则作为发起方；否则，是应答方
-			offerPeerConnection.createOffer(sendOfferFn, function(error) {
-				console.log('Failure callback: ' + error);
-			});
-
-		}, function(error) {
-			var msgTip="获取不到媒体流，请确认麦克风或者视频设备";
-			alert(msgTip);
-			$("#tips-content").html(msgTip);
-			//处理媒体流创建失败错误
-			console.log('getUserMedia error: ' + error);
-		});
-
-	
+if (!roomId) {
+	showTip("缺少 roomId 参数，无法建立通话");
+	throw new Error("missing roomId");
 }
 
-//处理到来的信令
-socket.onmessage = function(event) {
-	var json = JSON.parse(event.data);
-	//如果是一个ICE的候选，则将其加入到PeerConnection中，否则设定对方的session描述为传递过来的描述
-	if (json.event == "_ice_candidate") {
-		if (json.userName != userName) {
-			if (json.type == "_ice_offer") {
-				answerPeerConnection.addIceCandidate(new RTCIceCandidate(
-						json.data.candidate));
-			}
-			if (json.type == "_ice_answer") {
-				offerPeerConnection.addIceCandidate(new RTCIceCandidate(
-						json.data.candidate));
-			}
-		}
-	} else if (json.message === "websocket open!") {
-		console.log("open!");
-	} else {
-		if (json.userName != userName) {
-			if (json.event === "_offer") {
-				if (answerPeerConnection.signalingState === "stable") {
-					answerPeerConnection
-							.setRemoteDescription(new RTCSessionDescription(
-									json.data.sdp))
-							.then(function() {
-								return answerPeerConnection.createAnswer();
-							})
-							.then(sendAnswerFn)
-							.catch(function(error) {
-								console.log('handle offer error: ' + error);
-							});
-				} else {
-					console.log('ignore offer in state: '
-							+ answerPeerConnection.signalingState);
-				}
-			} else if (json.event === "_answer") {
-				if (offerPeerConnection.signalingState === "have-local-offer") {
-					offerPeerConnection
-							.setRemoteDescription(new RTCSessionDescription(
-									json.data.sdp))
-							.catch(function(error) {
-								console.log('setRemoteDescription answer error: ' + error);
-							});
-				} else {
-					console.log('ignore answer in state: '
-							+ offerPeerConnection.signalingState);
-				}
-			}
-		}
-	
-	}
+var socket = new WebSocket(webrtcWebSocketUrl + "/" + encodeURIComponent(roomId));
+
+socket.onopen = function() {
+	console.log("websocket opened.");
+	startLocalMedia();
 };
+
+socket.onmessage = function(event) {
+	handleSignal(JSON.parse(event.data));
+};
+
+socket.onclose = function() {
+	if (roomBusy) {
+		return;
+	}
+	showTip("信令连接已断开");
+	closePeerConnection();
+};
+
+socket.onerror = function(error) {
+	console.log("websocket error: " + error);
+	showTip("信令连接异常");
+};
+
+window.onbeforeunload = function() {
+	sendSignal({
+		"event": "_leave"
+	});
+};
+
+async function startLocalMedia() {
+	if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+		showTip("当前浏览器不支持 mediaDevices.getUserMedia");
+		return;
+	}
+
+	try {
+		localStream = await navigator.mediaDevices.getUserMedia({
+			"audio": true,
+			"video": true
+		});
+
+		var miniVideo = document.getElementById("miniVideo");
+		miniVideo.srcObject = localStream;
+		miniVideo.muted = true;
+
+		createPeerConnection();
+		showTip("正在等待连接，请等待...");
+	} catch (error) {
+		var msgTip = "获取不到媒体流，请确认麦克风或者视频设备";
+		alert(msgTip);
+		showTip(msgTip);
+		console.log("getUserMedia error: " + error);
+	}
+}
+
+function createPeerConnection() {
+	if (peerConnection) {
+		return peerConnection;
+	}
+
+	peerConnection = new RTCPeerConnection(iceServer);
+
+	peerConnection.onicecandidate = function(event) {
+		if (event.candidate) {
+			sendSignal({
+				"event": "_ice_candidate",
+				"data": {
+					"candidate": event.candidate
+				}
+			});
+		}
+	};
+
+	peerConnection.ontrack = function(event) {
+		unLoading();
+		document.getElementById("remoteVideo").srcObject = event.streams[0];
+	};
+
+	peerConnection.onconnectionstatechange = function() {
+		if (peerConnection.connectionState === "disconnected"
+				|| peerConnection.connectionState === "failed"
+				|| peerConnection.connectionState === "closed") {
+			showTip("通话已断开");
+		}
+	};
+
+	if (localStream) {
+		localStream.getTracks().forEach(function(track) {
+			peerConnection.addTrack(track, localStream);
+		});
+	}
+
+	return peerConnection;
+}
+
+async function handleSignal(message) {
+	if (message.userName === userName) {
+		return;
+	}
+
+	try {
+		if (message.event === "_join") {
+			showTip("正在等待连接，请等待...");
+		} else if (message.event === "_ready") {
+			await waitForPeerConnection();
+			if (message.initiator) {
+				await createAndSendOffer();
+			}
+		} else if (message.event === "_offer") {
+			await waitForPeerConnection();
+			await handleOffer(message.data.sdp);
+		} else if (message.event === "_answer") {
+			await waitForPeerConnection();
+			await handleAnswer(message.data.sdp);
+		} else if (message.event === "_ice_candidate") {
+			await handleIceCandidate(message.data.candidate);
+		} else if (message.event === "_leave" || message.event === "_hangup") {
+			handleRemoteLeave();
+		} else if (message.event === "_busy") {
+			roomBusy = true;
+			showTip("房间人数已满，请稍后再试");
+			closePeerConnection();
+		}
+	} catch (error) {
+		console.log("handle signal error: " + error);
+	}
+}
+
+async function createAndSendOffer() {
+	if (peerConnection.signalingState !== "stable") {
+		console.log("ignore create offer in state: " + peerConnection.signalingState);
+		return;
+	}
+
+	var offer = await peerConnection.createOffer();
+	await peerConnection.setLocalDescription(offer);
+	sendSignal({
+		"event": "_offer",
+		"data": {
+			"sdp": peerConnection.localDescription
+		}
+	});
+}
+
+async function handleOffer(sdp) {
+	if (peerConnection.signalingState !== "stable") {
+		console.log("ignore offer in state: " + peerConnection.signalingState);
+		return;
+	}
+
+	await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+	remoteDescriptionSet = true;
+	await flushPendingIceCandidates();
+
+	var answer = await peerConnection.createAnswer();
+	await peerConnection.setLocalDescription(answer);
+	sendSignal({
+		"event": "_answer",
+		"data": {
+			"sdp": peerConnection.localDescription
+		}
+	});
+}
+
+async function handleAnswer(sdp) {
+	if (peerConnection.signalingState !== "have-local-offer") {
+		console.log("ignore answer in state: " + peerConnection.signalingState);
+		return;
+	}
+
+	await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
+	remoteDescriptionSet = true;
+	await flushPendingIceCandidates();
+}
+
+async function handleIceCandidate(candidate) {
+	if (!candidate) {
+		return;
+	}
+
+	await waitForPeerConnection();
+
+	if (!remoteDescriptionSet) {
+		pendingIceCandidates.push(candidate);
+		return;
+	}
+
+	await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+}
+
+async function flushPendingIceCandidates() {
+	while (pendingIceCandidates.length > 0) {
+		var candidate = pendingIceCandidates.shift();
+		await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+	}
+}
+
+function handleRemoteLeave() {
+	showTip("对方已离开，正在等待重新连接...");
+	closePeerConnection();
+	createPeerConnection();
+}
+
+function closePeerConnection() {
+	if (peerConnection) {
+		peerConnection.close();
+		peerConnection = null;
+	}
+	remoteDescriptionSet = false;
+	pendingIceCandidates = [];
+	document.getElementById("remoteVideo").srcObject = null;
+}
+
+function sendSignal(message) {
+	if (socket.readyState !== WebSocket.OPEN) {
+		return;
+	}
+
+	message.userName = userName;
+	socket.send(JSON.stringify(message));
+}
+
+function waitForPeerConnection() {
+	return new Promise(function(resolve) {
+		if (peerConnection) {
+			resolve(peerConnection);
+			return;
+		}
+
+		var timer = setInterval(function() {
+			if (peerConnection) {
+				clearInterval(timer);
+				resolve(peerConnection);
+			}
+		}, 50);
+	});
+}
+
+function showTip(message) {
+	$("#tips-content").html(message);
+}
 
 /**
  * 加载提示款
- * @memberOf {TypeName} 
+ *
+ * @memberOf {TypeName}
  */
 function loading() {
-
-	$('#my-modal-loading').modal( {
-		relatedElement : this,
-		cancelable : false
+	$("#my-modal-loading").modal({
+		relatedElement: this,
+		cancelable: false
 	});
-
 }
 
 /**
  * 关闭加载提示款
- * @memberOf {TypeName} 
+ *
+ * @memberOf {TypeName}
  */
 function unLoading() {
-	$('#my-modal-loading').modal("close")
+	$("#my-modal-loading").modal("close");
 }
